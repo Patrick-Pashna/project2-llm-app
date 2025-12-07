@@ -8,11 +8,14 @@ Created on Wed Dec  3 15:41:33 2025
 import streamlit as st
 from transformers import pipeline
 
-# 1. Load an open-source question-answering model
-qa_model = pipeline(
-    "question-answering",
-    model="deepset/roberta-base-squad2"
-)
+# 1. Load an open-source question-answering model (cached)
+@st.cache_resource
+def get_qa_model():
+    # This will run only once; later calls reuse the same model
+    return pipeline(
+        "question-answering",
+        model="deepset/roberta-base-squad2"
+    )
 
 # 2. Page layout
 st.title("Project 2: Web-Based LLM App")
@@ -55,7 +58,7 @@ if st.button("Ask AI"):
     else:
         # Read context from uploaded file (if any)
         context_text = read_uploaded_file(uploaded_file)
-         # Limit context to first 20,000 characters to keep it manageable
+        # Limit context to first 20,000 characters to keep it manageable
         max_chars = 20000
         context_text = context_text[:max_chars]
 
@@ -67,6 +70,8 @@ if st.button("Ask AI"):
             )
 
         with st.spinner("Thinking..."):
+            # >>> load the cached model here
+            qa_model = get_qa_model()
             result = qa_model(
                 question=user_question,
                 context=context_text
