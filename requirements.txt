@@ -1,3 +1,4 @@
-streamlit
+streamlit==1.52.1
 transformers
 torch
+# plus anything else you import in llm_app.py
