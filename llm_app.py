@@ -1,81 +1,77 @@
 # -*- coding: utf-8 -*-
 """
+Created on Tue Dec  9 11:19:34 2025
+
+@author: mohse
+"""
+
+# -*- coding: utf-8 -*-
+"""
+Project 2: Web-Based LLM App
 Created on Wed Dec  3 15:41:33 2025
 
 @author: mpashna
 """
 
 import streamlit as st
-from transformers import pipeline
+import re
+from PyPDF2 import PdfReader
+from groq import Groq
 
-# 1. Load an open-source question-answering model (cached)
-@st.cache_resource
-def get_qa_model():
-    # This will run only once; later calls reuse the same model
-    return pipeline(
-        "question-answering",
-        model="deepset/roberta-base-squad2"
+# 1. Initialize Groq client for closed-source LLM (Question 4)
+# For local testing, paste your key directly.
+# For deployment on Streamlit Cloud, you will use:
+# client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+
+
+
+def answer_with_llm(question, context):
+    """
+    Send question + context to Groq's Llama-3 model and return the answer.
+    """
+    prompt = f"""
+    You are a helpful assistant. Use the following article text to answer the user's question.
+    If the answer is not contained in the text, say you don't know.
+
+    Article text:
+    {context}
+
+    Question: {question}
+    """
+
+    completion = client.chat.completions.create(
+        model="llama3-70b-8192",
+        messages=[
+            {"role": "user", "content": prompt}
+        ]
     )
+
+    return completion.choices[0].message.content
+
 
 # 2. Page layout
 st.title("Project 2: Web-Based LLM App")
 
-st.header("Input to AI")
+st.header("Input to AI (Question 1)")
 
 # Text box for the user question
 user_question = st.text_input("Enter your question:")
 
-# File uploader for an optional document
-uploaded_file = st.file_uploader(
-    "Upload attachment (optional):",
-    type=["txt", "pdf", "docx", "html"]
+# File uploader for articles (can upload multiple PDFs for Q2)
+uploaded_files = st.file_uploader(
+    "Upload article(s) (optional, PDF or TXT):",
+    type=["txt", "pdf"],
+    accept_multiple_files=True
 )
 
 st.markdown("---")
-st.subheader("AI Response:")
+st.subheader("AI Response (Question 1)")
+
 
 # 3. Helper function to turn uploaded file into text
 def read_uploaded_file(file):
     if file is None:
         return ""
 
-    data = file.read()
-
-    # Try to decode bytes as UTF-8 text
-    try:
-        return data.decode("utf-8", errors="ignore")
-    except AttributeError:
-        # If it's already a string
-        return str(data)
-    except UnicodeDecodeError:
-        # If decoding fails (e.g., binary PDF), just ignore
-        return ""
-
-# 4. Button logic – call the model when clicked
-if st.button("Ask AI"):
-    if not user_question.strip():
-        st.warning("Please enter a question.")
-    else:
-        # Read context from uploaded file (if any)
-        context_text = read_uploaded_file(uploaded_file)
-        # Limit context to first 20,000 characters to keep it manageable
-        max_chars = 20000
-        context_text = context_text[:max_chars]
-
-        # If there is no usable context, tell the model to answer directly
-        if not context_text.strip():
-            context_text = (
-                "No document was provided or it could not be read as text. "
-                "Answer the user's question directly using your general knowledge."
-            )
-
-        with st.spinner("Thinking..."):
-            # >>> load the cached model here
-            qa_model = get_qa_model()
-            result = qa_model(
-                question=user_question,
-                context=context_text
-            )
-
-        answer = result.get("answer", "(No answer returned.)")
-        st.write(answer)
+    # Always reset pointer to the start in case fi
